@@ -1,0 +1,69 @@
+<apex:page sidebar="false" showHeader="false" controller="drivingInstructionsCont" tabStyle="Route__c" title="Route Driving Instructions">
+<style type="text/css">
+.right {
+position:absolute;
+right:0px;
+}
+</style>
+    
+    <div align="right" class="right"><a href="javascript:window.print()" style="color: blue;">Print</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+    
+    <br/>
+    <br/>
+    <apex:pageBlock title="Points On The Way">
+    	<apex:pageBlockTable value="{!routeList}" var="rec">
+    		<apex:column value="{!rec.sNo}" style="width: 2%"/>
+    		<apex:column headerValue="Point" style="width: 20%">
+            	<a href="/{!rec.id}" target="_blank" title="{!rec.name}">{!rec.name}</a>    
+            </apex:column>
+            <apex:column value="{!rec.address}" style="width: 40%" headerValue="Address"/>
+    	</apex:pageBlockTable>    
+    <div id="totalLength"></div>
+    </apex:pageBlock>
+    
+    <div>&nbsp;&nbsp;<a href="javascript:void(0)" style="color: blue;" onclick="showDrivingInstructions();" id="showDrivingInstructionsId">Display Driving Instructions</a></div>
+    <br/>
+    
+    <div style="display: none" id="DirvingInstructionsDiv">
+    <apex:pageBlock title="Driving Instructions">
+    <div id="instructions"></div>
+    </apex:pageBlock>
+    </div>
+    
+    <script type="text/javascript">
+    instructionsDisplayed = false;
+    
+    var totalLengthOfRoute = window.opener.totalLengthOfRoute;
+    
+    if(!window.opener.document.getElementById('pageId:formId:kmOrMileRadios:0').checked) {
+        totalLengthOfRoute = roundNumber(totalLengthOfRoute/(1000*1.61), 2);
+        totalLengthOfRoute = totalLengthOfRoute.toString() + ' Miles';
+    } else {
+        totalLengthOfRoute = roundNumber(totalLengthOfRoute/1000, 2);
+        totalLengthOfRoute = totalLengthOfRoute.toString() + ' KM';
+    }
+    document.getElementById('totalLength').innerHTML = '<b>Total length:</b> ' + totalLengthOfRoute;
+    
+    
+    document.getElementById('instructions').innerHTML = 
+        window.opener.document.getElementById('routePlan').value;
+        
+    function showDrivingInstructions() {
+        if(instructionsDisplayed) {
+            document.getElementById('DirvingInstructionsDiv').style.display = 'none';
+            document.getElementById('showDrivingInstructionsId').innerHTML = 'Display Driving Instructions';
+            instructionsDisplayed = false;
+        } else {
+            document.getElementById('DirvingInstructionsDiv').style.display = '';
+            document.getElementById('showDrivingInstructionsId').innerHTML = 'Hide Driving Instructions';
+            instructionsDisplayed = true;
+        }
+        
+    }
+    
+    function roundNumber(num, dec) {
+        var result = Math.round(num*Math.pow(10,dec))/Math.pow(10,dec);
+        return result;
+    }
+    </script>
+</apex:page>

@@ -1,0 +1,243 @@
+<apex:page standardController="Route__c" extensions="SaveRouteCls" sidebar="false" showHeader="false" id="pageId">
+<style>
+body{ overflow-x:hidden;overflow-y:hidden; }
+</style>
+    
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+<link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.9/jquery-ui.min.js"></script>
+    
+    <!-- header -->
+    <div align="right" style="position:absolute; right:0px; margin-right: 5px; margin-top: 5px;">
+    <input title="close" type="image" src="{!$Resource.closePopUp}" alt="Close" onclick="window.parent.hideGreyOverlay('saveRoutePopup');"/>
+    </div>
+    <br/>
+    <div style="font-size: 2em; font-weight: normal; margin-left: 42px;">Save Route</div>
+    <br/>
+    <!-- header -->
+    
+    <apex:pageMessages />
+    <apex:form id="formId" rendered="{!okToRender}">
+        <apex:inputHidden value="{!path}" id="pathId"/>
+        <apex:inputHidden value="{!mainAddressRecordId}" id="mainAddressRecordId"/>
+        <apex:inputHidden value="{!recordIds}" id="recordIds"/>
+        <apex:inputHidden value="{!distance}" id="distance"/>
+        <apex:inputHidden value="{!kmOrMiles}" id="kmOrMiles"/>
+        <apex:inputHidden value="{!showAccounts}" id="showAccounts"/>
+        <apex:inputHidden value="{!showContacts}" id="showContacts"/>
+        <apex:inputHidden value="{!showLeads}" id="showLeads"/>
+        <apex:inputHidden value="{!filtersNice}" id="filtersNice"/>
+        <apex:inputHidden value="{!filters}" id="filters"/>
+        <apex:inputHidden value="{!filterId}" id="filterId"/>
+        <apex:inputHidden value="{!mainAddress}" id="mainAddress"/>
+        <apex:inputHidden value="{!mainAddressLatitude}" id="mainAddressLatitude"/>
+        <apex:inputHidden value="{!mainAddressLongitude}" id="mainAddressLongitude"/>
+        <apex:inputHidden value="{!ownAddress}" id="ownAddress"/>
+        <apex:inputHidden value="{!ownAddressLatitude}" id="ownAddressLatitude"/>
+        <apex:inputHidden value="{!ownAddressLongitude}" id="ownAddressLongitude"/>
+        <apex:inputHidden value="{!accountType}" id="accountType"/>
+        <apex:inputHidden value="{!leadStatus}" id="leadStatus"/>
+        
+        <apex:pageBlock id="blockId">
+            <apex:pageBlockButtons location="top">
+                <apex:commandButton action="{!save}" value="Save Route" onclick="return checkParams();"/>
+            </apex:pageBlockButtons>
+            <apex:pageBlockSection columns="1" rendered="{!isUpdate}">
+                <apex:selectRadio value="{!UpdateRoute}" layout="lineDirection" id="rbUpdateRoute">
+                    <apex:selectOptions value="{!UpdateOrInsert}" />
+                </apex:selectRadio>
+            </apex:pageBlockSection>
+            <apex:pageBlockSection columns="1" id="SectionId">
+<!--                <apex:pageblockSectionItem id="Item5Id">    
+                    Create Event
+                    <apex:pageblockSectionItem id="Item6Id">    
+                        <apex:inputCheckbox value="{!createEvent}" id="createEvent"/>
+                    </apex:pageblockSectionItem>
+                </apex:pageblockSectionItem>
+-->            
+                <apex:inputField value="{!route.Name}" required="true" style="width: 250px"/>
+                <apex:inputField value="{!route.Date__c}" required="true"/>
+<!--                <apex:pageblockSectionItem id="Item1Id">    
+                    Start
+                    <apex:pageblockSectionItem id="Item2Id">    
+                        <apex:inputText value="{!startTime}" style="width: 40px" maxlength="5" id="startId"/>
+                        <span class="dateFormat">[&nbsp;<a href="javascript:setTimeInput('start');">10:00</a>&nbsp;]</span>
+                    </apex:pageblockSectionItem>
+                </apex:pageblockSectionItem>
+                <apex:pageblockSectionItem id="Item3Id">    
+                    End
+                    <apex:pageblockSectionItem id="Item4Id">    
+                        <apex:inputText value="{!endTime}" style="width: 40px" maxlength="5" id="endId"/>
+                        <span class="dateFormat">[&nbsp;<a href="javascript:setTimeInput('end');">18:00</a>&nbsp;]</span>
+                    </apex:pageblockSectionItem>
+                </apex:pageblockSectionItem>
+-->            </apex:pageBlockSection>
+        </apex:pageBlock>
+    </apex:form>
+<script type="text/javascript">
+
+function setFocus() {}
+
+var routeSaved = {!routeSaved};
+if(routeSaved == true) {
+    //window.parent.document.getElementById('routeNameSpan').innerHTML = '{!JSINHTMLEncode(route.name)}';
+    window.parent.document.getElementById('routeNameSpan1').innerHTML = '{!JSINHTMLEncode(route.name)}';
+    window.parent.document.getElementById('pageId:formId:routeName').value = '{!JSENCODE(route.name)}';
+    window.parent.document.getElementById('pageId:formId:routeId').value = '{!route.id}';
+    //window.parent.hideGreyOverlay('saveRoutePopup');
+} else {
+    var currLocation;
+    var path = ''; //',' delemeted list of record Ids. '0' for main address which is not in the system, '1' for own address in the route.
+    
+    for(var i = 1; i <= 10; i++) {
+        currLocation = window.parent.document.getElementById('pageId:formId:locId' + i).value;
+        if(currLocation == '') {break;}
+        if(i > 1) {path+=',';}
+        path += currLocation;
+    }
+    
+    document.getElementById('pageId:formId:pathId').value = path;
+    var mainAddressRecordId = window.parent.document.getElementById('pageId:formId:mainAddressRecordId').value;
+    document.getElementById('pageId:formId:mainAddressRecordId').value = mainAddressRecordId;
+    if(mainAddressRecordId == '') {
+        document.getElementById('pageId:formId:mainAddress').value = 
+            window.parent.MainAddressName + ',' + 
+            window.parent.document.getElementById('pageId:formId:MainAddressStreet').value + ',' + 
+            window.parent.document.getElementById('pageId:formId:MainAddressCity').value + ',' + 
+            window.parent.document.getElementById('pageId:formId:MainAddressZip').value + ',' + 
+            window.parent.document.getElementById('pageId:formId:MainAddressState').value + ',' + 
+            window.parent.document.getElementById('pageId:formId:MainAddressCountry').value;
+        
+        document.getElementById('pageId:formId:mainAddressLatitude').value = 
+            window.parent.document.getElementById('pageId:formId:latitudeId').value
+        document.getElementById('pageId:formId:mainAddressLongitude').value = 
+            window.parent.document.getElementById('pageId:formId:longitudeId').value
+        
+    }
+
+ /*   if(window.parent.document.getElementById('pageId:formId:3Q2Q2Q2222222222221').value != '') {
+        document.getElementById('pageId:formId:ownAddress').value = 
+            window.parent.document.getElementById('pageId:formId:OwnAddressName').value + '%%%%%Address%%%%%' + 
+            window.parent.document.getElementById('pageId:formId:OwnAddressStreet').value + '%%%%%Address%%%%%' + 
+            window.parent.document.getElementById('pageId:formId:OwnAddressCity').value + '%%%%%Address%%%%%' + 
+            window.parent.document.getElementById('pageId:formId:OwnAddressZip').value + '%%%%%Address%%%%%' + 
+            window.parent.document.getElementById('pageId:formId:OwnAddressState').value + '%%%%%Address%%%%%' + 
+            window.parent.document.getElementById('pageId:formId:OwnAddressCountry').value;
+        document.getElementById('pageId:formId:ownAddressLatitude').value = 
+            window.parent.document.getElementById('pageId:formId:OwnAddressLatitude').value;
+        document.getElementById('pageId:formId:ownAddressLongitude').value = 
+            window.parent.document.getElementById('pageId:formId:OwnAddressLongitude').value;
+    }
+   */ document.getElementById('pageId:formId:distance').value = window.parent.document.getElementById('pageId:formId:distance').value;
+    
+    if(window.parent.document.getElementById('pageId:formId:kmOrMileRadios:0').checked) {
+        document.getElementById('pageId:formId:kmOrMiles').value = 'KM';
+    } else {
+        document.getElementById('pageId:formId:kmOrMiles').value = 'Miles';
+    }
+    if(window.parent.document.getElementById('pageId:formId:findAccountsCb').checked) {
+        document.getElementById('pageId:formId:showAccounts').value = true;
+    }
+    if(window.parent.document.getElementById('pageId:formId:findContactsCb').checked) {
+        document.getElementById('pageId:formId:showContacts').value = true;
+    }
+    if(window.parent.document.getElementById('pageId:formId:findLeadsCb').checked) {
+        document.getElementById('pageId:formId:showLeads').value = true;
+    }
+    
+    document.getElementById('pageId:formId:accountType').value = window.parent.document.getElementById('pageId:formId:accType').value;
+    document.getElementById('pageId:formId:leadStatus').value = window.parent.document.getElementById('pageId:formId:leadStatus').value;
+    
+    document.getElementById('pageId:formId:recordIds').value = window.parent.document.getElementById('pageId:formId:recordIds').value;
+    
+    document.getElementById('pageId:formId:filtersNice').value = window.parent.document.getElementById('pageId:formId:filtersNiceHiddenId').value;
+    document.getElementById('pageId:formId:filters').value = window.parent.document.getElementById('pageId:formId:filtersId').value;
+    document.getElementById('pageId:formId:filterId').value = window.parent.document.getElementById('pageId:formId:filterId').value;
+}
+
+function checkParams() {
+/*
+    var isError = false;
+    
+    
+    var hour = document.getElementById('pageId:formId:blockId:SectionId:Item1Id:Item2Id:startId').value;
+    if(hour != '') {
+        var hourSplit = hour.split(':');
+        if(hourSplit.length != 2) {
+            isError = true; 
+        }
+        else {
+            if(hourSplit[0].length != 2 || hourSplit[1].length != 2) {isError = true;}
+            else {
+                if(!is_int(hourSplit[0].substring(0,1)) || !is_int(hourSplit[1].substring(0,1)) || 
+                   !is_int(hourSplit[0].substring(1,2)) || !is_int(hourSplit[1].substring(1,2)) || 
+                    parseInt(hourSplit[0]) > 23 ||
+                    parseInt(hourSplit[1]) > 59) 
+                {
+                    isError = true;
+                }
+            }
+            
+        }
+        if(isError) {
+            alert('Please enter start time in HH:MM format');
+            return false;
+        }
+        
+    }
+    
+    
+    hour = document.getElementById('pageId:formId:blockId:SectionId:Item3Id:Item4Id:endId').value;
+    if(hour != '') {
+        hourSplit = hour.split(':');
+        if(hourSplit.length != 2) {
+            isError = true; 
+        }
+        else {
+            if(hourSplit[0].length != 2 || hourSplit[1].length != 2) {isError = true;}
+            else {
+                if(!is_int(hourSplit[0].substring(0,1)) || !is_int(hourSplit[1].substring(0,1)) || 
+                   !is_int(hourSplit[0].substring(1,2)) || !is_int(hourSplit[1].substring(1,2)) || 
+                    parseInt(hourSplit[0]) > 23 ||
+                    parseInt(hourSplit[1]) > 59) 
+                {
+                    isError = true;
+                }
+            }
+            
+        }
+        if(isError) {
+            alert('Please enter end time in HH:MM format');
+            return false;
+        }
+    }
+    
+    if((document.getElementById('pageId:formId:blockId:SectionId:Item1Id:Item2Id:startId').value == '' || 
+        document.getElementById('pageId:formId:blockId:SectionId:Item3Id:Item4Id:endId').value == '') &&
+        document.getElementById('pageId:formId:blockId:SectionId:Item5Id:Item6Id:createEvent').checked) 
+    {
+        alert('Cannot create event without start and end time');
+        return false;
+    }
+*/
+    window.parent.document.getElementById('saveRoutePopup').style.display= 'none';
+    window.parent.hideGreyOverlay('');
+    return true;
+}
+
+function setTimeInput(timeStr) {
+    //if(timeStr == 'start') {document.getElementById('pageId:formId:blockId:SectionId:Item1Id:Item2Id:startId').value = '10:00';}
+    //if(timeStr == 'end') {document.getElementById('pageId:formId:blockId:SectionId:Item3Id:Item4Id:endId').value = '18:00';}
+}
+
+function is_int(value){ 
+/*  if((parseFloat(value) == parseInt(value)) && !isNaN(value)){
+      return true;
+  } else { 
+      return false;
+  }
+*/   
+}
+
+</script>   
+</apex:page>

@@ -1,0 +1,177 @@
+<apex:page sidebar="false" showHeader="false" controller="emailRouteCont" tabStyle="Route__c" id="pageId">
+
+<!-- header -->
+<div align="right" style="position:absolute; right:0px; margin-right: 5px; margin-top: 5px;">
+    <input title="close" type="image" src="{!$Resource.closePopUp}" alt="Close" onclick="window.parent.hideGreyOverlay('emailRoutePopup');"/>
+    </div>
+    <br/>
+<div style="font-size: 2em; font-weight: normal; margin-left: 42px;">Email Route</div>
+<br/>
+<!-- header --> 
+
+<apex:pageMessages />
+
+<apex:form id="formId">
+    <apex:inputHidden value="{!totalLengthOfRoute}" id="totalLengthOfRouteId"/>
+    <apex:inputHidden value="{!drivingInstructions}" id="drivingInstructionsId"/>
+    <apex:inputHidden value="{!locations}" id="locationsId"/>
+    <apex:inputHidden value="{!sendToUser}" id="sendToUserId"/>
+    
+    <apex:pageBlock id="blockId">
+        <table>
+        <tr><td><input type="radio" name="group1" value="Send to user" checked="checked" onchange="radioButtonChanged();" id="userRB"/>&nbsp;Send to user&nbsp;</td><td><apex:inputField id="userName" value="{!inputHolder.User__c}"/></td></tr>
+        <tr><td><input type="radio" name="group1" value="Enter Email" onchange="radioButtonChanged();" id="emailRB"/>&nbsp;Enter Email&nbsp;</td><td><apex:inputText value="{!email}" id="emailId"/></td></tr>
+        </table>
+        <br/>
+        <table>
+        <tr><td><apex:inputCheckbox value="{!showDrivingInstructions}"/>&nbsp;Include driving instructions</td><td></td></tr>
+        </table>
+        <br/><br/>
+        <apex:commandbutton value="Send" action="{!send}" onclick="return checkParams(this)"/>
+    </apex:pageBlock>
+</apex:form>
+
+<script type="text/javascript"> 
+if(document.getElementById('pageId:formId:blockId:userName_mlktp')) {
+    document.getElementById('pageId:formId:blockId:userName_mlktp').style.display = 'none'; //remove dropdown of user type
+}
+
+/* addresses */
+var addresses = '{!JSINHTMLEncode(addresses)}';
+var closeWindow = {!closeWindow};
+if(closeWindow) {window.parent.hideGreyOverlay('emailRoutePopup');}
+
+/* totalLengthOfRoute */
+var totalLengthOfRoute = window.parent.totalLengthOfRoute;
+if(!window.parent.document.getElementById('pageId:formId:kmOrMileRadios:0').checked) {
+    totalLengthOfRoute = roundNumber(totalLengthOfRoute/(1000*1.61), 2);
+    totalLengthOfRoute = totalLengthOfRoute.toString() + ' Miles';
+} else {
+    totalLengthOfRoute = roundNumber(totalLengthOfRoute/1000, 2);
+    totalLengthOfRoute = totalLengthOfRoute.toString() + ' KM';
+}
+document.getElementById('pageId:formId:totalLengthOfRouteId').value = '<b>Total length</b>: ' + totalLengthOfRoute;
+
+/* locations */
+var addressesArray = addresses.split('|');
+var locations = addresses;
+/*
+for(i = 0; i < addressesArray.length; i++) {
+    var num = i+1;
+    var street;
+    var city;
+    var zip;
+    var state;
+    var country;
+    var name;
+    if(addressesArray[i] == '0') {
+        name = window.parent.MainAddressName;
+        street = window.parent.document.getElementById('pageId:formId:MainAddressStreet').value;
+        city = window.parent.document.getElementById('pageId:formId:MainAddressCity').value;
+        zip = window.parent.document.getElementById('pageId:formId:MainAddressZip').value;
+        state = window.parent.document.getElementById('pageId:formId:MainAddressState').value;
+        country = window.parent.document.getElementById('pageId:formId:MainAddressCountry').value;
+        
+        //not using returnAddressString because of XSS
+        var addressString = street;
+        if(zip != '' && zip != ' ') {addressString += ', ' + zip;}
+        if(city != '' && city != ' ') {addressString += ', ' + city;}
+        if(state != '' && state != ' ') {addressString += ', ' + state;}
+        if(country != '' && country != ' ') {addressString += ', ' + country;}
+        //addressString = returnAddressString(street, zip, city, state, country);
+        //
+        
+        locations += num.toString() + '. ' + name + ' (' + addressString + ')<br/><br/>';
+    } 
+    else if(addressesArray[i] == '1') {
+        name = window.parent.document.getElementById('pageId:formId:OwnAddressName').value;
+        street = window.parent.document.getElementById('pageId:formId:OwnAddressStreet').value;
+        city = window.parent.document.getElementById('pageId:formId:OwnAddressCity').value;
+        zip = window.parent.document.getElementById('pageId:formId:OwnAddressZip').value;
+        state = window.parent.document.getElementById('pageId:formId:OwnAddressState').value;
+        country = window.parent.document.getElementById('pageId:formId:OwnAddressCountry').value;
+        
+        //not using returnAddressString because of XSS
+        var addressString = street;
+        if(zip != '' && zip != ' ') {addressString += ', ' + zip;}
+        if(city != '' && city != ' ') {addressString += ', ' + city;}
+        if(state != '' && state != ' ') {addressString += ', ' + state;}
+        if(country != '' && country != ' ') {addressString += ', ' + country;}
+        //addressString = returnAddressString(street, zip, city, state, country);
+        //
+        
+        locations += num.toString() + '. ' + name + ' (' + addressString + ')<br/><br/>';
+    }
+    else if(addressesArray[i] == '2') {
+        name = window.parent.document.getElementById('pageId:formId:OwnAddressName').value;
+        locations += num.toString() + '. ' + name + ' (' + window.parent.fullAddressOfOwnAddress + ')<br/><br/>';
+    }
+    else {
+        locations += num.toString()+ '. ' + addressesArray[i] + '<br/><br/>';
+    }
+}
+*/
+document.getElementById('pageId:formId:locationsId').value = locations;
+
+/* driving instructions */
+document.getElementById('pageId:formId:drivingInstructionsId').value = 
+    window.parent.document.getElementById('routePlan').value;
+    
+/*******/
+
+function returnAddressString(street, zip, city, state, country) {
+    var address = street;
+    if(zip != '' && zip != ' ') {address += ', ' + zip;}
+    if(city != '' && city != ' ') {address += ', ' + city;}
+    if(state != '' && state != ' ') {address += ', ' + state;}
+    if(country != '' && country != ' ') {address += ', ' + country;}
+    
+    return address;
+}
+
+function showDrivingInstructions() {
+    if(instructionsDisplayed) {
+        document.getElementById('DirvingInstructionsDiv').style.display = 'none';
+        document.getElementById('showDrivingInstructionsId').innerHTML = 'Display Driving Instructions';
+        instructionsDisplayed = false;
+    } else {
+        document.getElementById('DirvingInstructionsDiv').style.display = '';
+        document.getElementById('showDrivingInstructionsId').innerHTML = 'Hide Driving Instructions';
+        instructionsDisplayed = true;
+    }
+    
+}
+
+function roundNumber(num, dec) {
+    var result = Math.round(num*Math.pow(10,dec))/Math.pow(10,dec);
+    return result;
+}
+
+function radioButtonChanged() {
+    if(document.getElementById('userRB').checked) {
+        document.getElementById('pageId:formId:sendToUserId').value = true;
+    } else {
+        document.getElementById('pageId:formId:sendToUserId').value = false;
+    }
+}
+
+function checkParams() {
+    if(document.getElementById('emailRB').checked) {
+        var address = document.getElementById('pageId:formId:blockId:emailId').value;
+        if(address == '') {
+            alert('Please enter email address');
+            return false;
+        }
+        var reg = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/;
+        if(reg.test(address) == false) {
+            alert('Please enter a valid email address');
+            return false;
+        }
+    }
+    window.parent.document.getElementById('emailRoutePopup').style.display= 'none';
+    window.parent.hideGreyOverlay('');
+    return true;
+    
+}
+</script>
+</apex:page>

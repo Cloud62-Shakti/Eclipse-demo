@@ -1,0 +1,1581 @@
+<apex:page controller="FindRouteCls" id="pageId" tabStyle="Route__c">
+<head>
+<style>
+#MyMainDiv {
+    position: relative;
+    top: 0px;
+}
+
+#mapDiv {
+  font-family: Arial
+  font-size: 12px;
+  line-height: normal;
+  height: 598px;
+  background: transparent;
+  /*margin-right: 200px;*/
+}
+#routeDiv1 {
+  font-family: Arial;
+  font-size: 12px;
+  line-height: normal; 
+  /*height: 600px;*/
+  background: transparent;
+  float: right;
+  width: 196px;
+  /*position: relative;
+  bottom: 609px;*/
+}
+.fontHeadline {
+    font-size: 15px;
+}
+.fontBold {
+    font-weight: bold;
+}
+.fontNormal {
+    font-weight: normal;
+}
+.redFont {
+    color: red;
+}
+
+.roundBorder {
+    position: relative; 
+    top: -10px; 
+    border-style: solid; 
+    border-width: 3px; 
+    padding: 5px;
+    -moz-border-radius: 15px; 
+    border-radius: 15px; 
+}
+.inputBox {
+    width: 154px;
+}
+.inputBoxBig {
+    width: 362px;
+}
+.col1 {
+    width: 50px;
+    text-align: left;
+}
+.BlueLeftBorder {
+    border-left: solid 2px; 
+    border-color: #029ACC;
+}
+
+.paddingLeft {
+    padding-left: 5px;
+}
+#greyPopup{
+     z-index: 2000;
+     position: absolute;
+     left: 0;
+     border-width: 0px;
+     background-color: #292929;
+     opacity: 0.6;
+     filter: alpha(opacity = 60); /*IE*/
+}
+#filtersPopup{
+     border-width: 0px;
+     left: 50%;
+     position: absolute;
+     z-index: 9999;
+     width: 650px;
+     margin-left: -325px;
+}
+#enterAddressPopup{
+     border-width: 0px;
+     left: 50%;
+     position: absolute;
+     z-index: 9999;
+     width: 448px;
+     margin-left: -224px;
+     top: 45px;
+}
+#saveRoutePopup{
+     border-width: 0px;
+     left: 50%;
+     position: absolute;
+     z-index: 9999;
+     width: 380px;
+     margin-left: -190px;
+     top: 45px;
+}
+#emailRoutePopup{
+     border-width: 0px;
+     left: 50%;
+     position: absolute;
+     z-index: 9999;
+     /*height: 247px;*/
+     width: 320px;
+     margin-left: -160px;
+     top: 45px;
+}
+.textCenter{
+    text-align: center;
+}
+.routePointDraggable{
+    position: absolute;
+    height: 50px;
+    width: 162px;
+    border: solid 2px; 
+    border-color: #029ACC;
+    background-color: #A5BFDD;
+}
+.routePointDroppable{
+    position: absolute;
+    height: 50px;
+    width: 162px;
+    border: solid 2px;
+    border-color: transparent;
+}
+#routeDiv1FieldSet{
+    border: solid 2px; 
+    border-color: #248000; 
+    background-color: #F8F8F8;
+    height: 593px; 
+    width: 176px;
+}
+@-moz-document url-prefix() {
+#routeDiv1FieldSet{
+    border: solid 2px; 
+    border-color: #248000; 
+    background-color: #F8F8F8;
+    height: 592px; 
+    width: 176px;
+}
+}
+.AccountColor {
+    color: #236FBD;
+}
+.ContactColor {
+    color: #56458C;
+}
+.LeadColor {
+    color: #E39321;
+}
+</style>
+    
+    
+    
+    <script type="text/javascript" src="https://maps.google.com/maps/api/js?v=3&sensor=true&language=en"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+    <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.9/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script> 
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.22/jquery-ui.min.js"></script>
+    <script type="text/javascript"> 
+    
+    function returnAddressString(street, zip, city, state, country) {
+    var address = street;
+    if(zip != '' && zip != ' ') {address += '<br/>' + zip;}
+    if(city != '' && city != ' ') {address += '<br/>' + city;}
+    if(state != '' && state != ' ') {address += '<br/>' + state;}
+    if(country != '' && country != ' ') {address += '<br/>' + country;}
+    
+    return address;
+}
+
+function radioButtonChanged() {
+    document.getElementById('pageId:formId:filterName').value = '--Select Filter--';
+    document.getElementById('filtersNiceShownId').innerHTML = '<b></b>';
+    document.getElementById('pageId:formId:filtersNiceHiddenId').value = '<b></b>';
+    document.getElementById('pageId:formId:filtersId').value = '';
+    document.getElementById('pageId:formId:filterId').value = '';
+}
+
+function deleteFromFiltersList(filterId) {
+    var indexToRemove = -1;
+    var s= document.getElementById('pageId:formId:filterName');
+    for(i=0;i < s.options.length ;i++) {
+        if(s.options[i].value == filterId) {indexToRemove = i; break;}
+    }
+    if(indexToRemove != -1) {s.remove(indexToRemove);}
+}
+
+function appendToFiltersList(filterId, filterName) {
+    var s= document.getElementById('pageId:formId:filterName');
+    s.options[s.options.length]= new Option(filterName, filterId);
+    s.options[s.options.length-1].selected = '1';
+}
+
+function filterChange() {
+    var filterId = document.getElementById('pageId:formId:filterName').value;
+    if(filterId != '--Select Filter--') {
+        var message = sforce.apex.execute("FNB.filterHandling",
+                                                "getFilterDetails",
+                                                {filterId: filterId});
+        if(message.toString().substring(0, 3) != 'OK%') {
+            alert(message);
+            document.getElementById('filtersNiceShownId').innerHTML = '';
+            document.getElementById('pageId:formId:filtersNiceHiddenId').value = '';
+            document.getElementById('pageId:formId:filtersId').value = '';
+            document.getElementById('filterEditRemoveButtons').style.display = 'none';
+        } else {
+            var msgSplit = message.toString().split('%%%%%%%%%%%%FILTER%%%%%%%%%%%%');
+            document.getElementById('filtersNiceShownId').innerHTML = msgSplit[2];
+            document.getElementById('pageId:formId:filtersNiceHiddenId').value = msgSplit[2];
+            
+            /* in case opened filter addrsses an object not selected by the checkboxes, select it */
+            var filterSplit = msgSplit[1].split('%%%NEWROW-NEWROW-NEWROW%%%');
+            var accCb = false, conCb = false, leadCb = false;
+            for(var i = 0; i < filterSplit.length; i++) {
+                var filterSplit1 = filterSplit[i].split('%%%INROW-INROW-INROW%%%');
+                if(filterSplit1[0] == 'Account' || filterSplit1[0] == 'Obj1') {accCb = true;}
+                if(filterSplit1[0] == 'Contact') {conCb = true;}
+                if(filterSplit1[0] == 'Lead') {leadCb = true;}
+            }
+            if(accCb) {document.getElementById('pageId:formId:findAccountsCb').checked = true;}
+            else {document.getElementById('pageId:formId:findAccountsCb').checked = false;}
+            if(conCb) {document.getElementById('pageId:formId:findContactsCb').checked = true;}
+            else {document.getElementById('pageId:formId:findContactsCb').checked = false;}
+            if(leadCb) {document.getElementById('pageId:formId:findLeadsCb').checked = true;}
+            else {document.getElementById('pageId:formId:findLeadsCb').checked = false;}
+            if(recordId != '') {
+                /* checkbox of main address record is anyway checked, regardless of the filter */
+                if(recordId.substring(0, 3) == '001') {document.getElementById('pageId:formId:findAccountsCb').checked = true;}
+                if(recordId.substring(0, 3) == '003') {document.getElementById('pageId:formId:findContactsCb').checked = true;}
+                if(recordId.substring(0, 3) == '00Q') {document.getElementById('pageId:formId:findLeadsCb').checked = true;}
+            } 
+            
+            document.getElementById('pageId:formId:filtersId').value = msgSplit[1];
+            
+            document.getElementById('filterEditRemoveButtons').style.display = '';
+        }
+    }
+    else {
+        document.getElementById('filtersNiceShownId').innerHTML = '<b></b>';
+        document.getElementById('pageId:formId:filtersNiceHiddenId').value = '<b></b>';
+        document.getElementById('pageId:formId:filtersId').value = '';
+    }
+}
+
+function removeMarker() {
+    if(ownAddressOnRoute) {
+        alert('Please first remove the location from the route');
+    } else {
+        for (var i = 0; i < markersThatCanBeRemoved.length; i++ ) {
+            markersThatCanBeRemoved[i].setMap(null);
+        }
+        document.getElementById('pageId:formId:OwnAddressUsed').value = 'false';
+    }
+}
+
+function typeCheckboxChanged(cb) {
+    if(cb.checked == false) {
+        
+        var objType = '';
+        if(cb.id == 'pageId:formId:findAccountsCb') {objType = 'Account';}
+        if(cb.id == 'pageId:formId:findContactsCb') {objType = 'Contact';}
+        if(cb.id == 'pageId:formId:findLeadsCb') {objType = 'Lead';}
+        var filters = document.getElementById('pageId:formId:filtersId').value;
+        if(filters != '') {
+            var filtersSplit = filters.split('%%%NEWROW-NEWROW-NEWROW%%%');
+            filters = '';
+            for(var i = 0; i < filtersSplit.length; i++) {
+                if(filtersSplit[i].substring(0, objType.length) != objType) {
+                    if(filters != '') {filters += '%%%NEWROW-NEWROW-NEWROW%%%';}
+                    filters += filtersSplit[i];
+                }
+            }
+            document.getElementById('pageId:formId:filtersId').value = filters;
+            if(filters == '') {document.getElementById('pageId:formId:filtersNiceHiddenId').value = '';}
+            
+            filters = document.getElementById('filtersNiceShownId').innerHTML;
+            filtersSplit = filters.split('<br><br>');
+            filters = '';
+            for(var i = 0; i < filtersSplit.length; i++) {
+                if(filtersSplit[i].substring(0, objType.length + 3) != '<b>' + objType) {
+                    if(filters != '') {filters += '<br><br>';}
+                    filters += filtersSplit[i];
+                }
+            }
+            if(filters != '') {
+                document.getElementById('pageId:formId:filtersNiceHiddenId').value = filters;
+                document.getElementById('filtersNiceShownId').innerHTML = filters;
+            }
+            else {
+                document.getElementById('filtersNiceShownId').innerHTML = '<b></b>';
+            }
+            
+        }
+    }
+}
+
+function deleteLocationFromRoute(aTag) {
+    var split1 = aTag.id.split('_');
+    var counter = split1[1];
+    if(document.getElementById('pageId:formId:locId' + counter).value == '1' ||
+        document.getElementById('pageId:formId:locId' + counter).value == '2')
+    {
+        ownAddressOnRoute = false;
+    }
+    var counter1 = parseInt(split1[1])+1;
+    while(counter1 <= 10) {
+        document.getElementById('pageId:formId:routeLatLong' + counter + 'Id').value =  
+            document.getElementById('pageId:formId:routeLatLong' + counter1 + 'Id').value;
+        document.getElementById('pageId:formId:locId' + counter).value =    
+            document.getElementById('pageId:formId:locId' + counter1).value;
+        counter++;
+        counter1++;
+    }
+    if(counter1 == 11) {
+        document.getElementById('pageId:formId:routeLatLong10Id').value = '';
+        document.getElementById('pageId:formId:locId10').value = '';
+    }
+    setRouteNames();
+}
+
+function deleteRoute() {
+    document.getElementById('pageId:formId:routeLatLong1Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong2Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong3Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong4Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong5Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong6Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong7Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong8Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong9Id').value = '';
+    document.getElementById('pageId:formId:routeLatLong10Id').value = '';
+    document.getElementById('pageId:formId:locId1').value = '';
+    document.getElementById('pageId:formId:locId2').value = '';
+    document.getElementById('pageId:formId:locId3').value = '';
+    document.getElementById('pageId:formId:locId4').value = '';
+    document.getElementById('pageId:formId:locId5').value = '';
+    document.getElementById('pageId:formId:locId6').value = '';
+    document.getElementById('pageId:formId:locId7').value = '';
+    document.getElementById('pageId:formId:locId8').value = '';
+    document.getElementById('pageId:formId:locId9').value = '';
+    document.getElementById('pageId:formId:locId10').value = '';
+    ownAddressOnRoute = false;
+  //  if(IElessThan9()) {document.getElementById('routeNameSpan').innerHTML = 'Untitled';}
+  //  else {
+    document.getElementById('routeNameSpan1').innerHTML = 'Untitled';
+  //  }
+    setRouteNames();
+    return false;
+}
+
+function removeFilters() {
+    document.getElementById('pageId:formId:filterName').value = '--Select Filter--';
+    document.getElementById('filtersNiceShownId').innerHTML = '<b></b>';
+    document.getElementById('pageId:formId:filtersNiceHiddenId').value = '';
+    document.getElementById('pageId:formId:filtersId').value = '';
+    document.getElementById('filterEditRemoveButtons').style.display = 'none';
+    return false;
+}
+
+function saveRoute() {
+    if(document.getElementById('pageId:formId:routeLatLong2Id').value == '') {
+        alert('No route on map');
+        return false;
+    }
+    
+    showGreyOverlay(); 
+    var routeId = document.getElementById('pageId:formId:routeId').value;
+    var queryString = '';
+    var height = 305;
+    if(routeId != '') {
+        queryString = '?id=' + routeId;
+        height += 35;
+    }
+    updateLongLat();
+    
+    /* open the modal window */
+    document.getElementById('saveRoutePopup').style.display = '';
+    document.getElementById('saveRoutePopup').style.height = height.toString() + 'px';
+    centerPopupVertically('saveRoutePopup', height.toString() + 'px');
+        
+    document.getElementById('saveRoutePopup').innerHTML = '<iframe src="/apex/saveRoute' + queryString + '" style="border: 0;" width="100%" height="100%"></iframe>';
+    /* open the modal window */
+    
+    
+    /*
+    var newwindow=window.open('/apex/saveRoute' + queryString, 'saveRoute', 'height='+height+',width=400,scrollbars=no,top=0,toolbar=no,personalbar=no,location=no,directories=no,statusbar=no,menubar=no,status=no,left=60,screenX=200,top=100,screenY=200');
+    if (window.focus) {newwindow.focus()}
+    */
+    
+    return false;
+}
+var directionsService = new google.maps.DirectionsService();
+function openEnterAddress() {
+    if(document.getElementById('pageId:formId:OwnAddressUsed').value == 'true') {
+        alert('Cannot add more than one point');
+    } else {
+        showGreyOverlay(); 
+        var height = '170px';
+        if (navigator.geolocation) {
+            height = '250px';
+        }
+        /* open the modal window */
+        document.getElementById('enterAddressPopup').style.display = '';
+        document.getElementById('enterAddressPopup').style.height = height;
+        centerPopupVertically('enterAddressPopup', height);
+        
+        document.getElementById('enterAddressPopup').innerHTML = '<iframe src="/apex/enterAddress" style="border: 0;" width="100%" height="100%"></iframe>';
+        
+        /* open the modal window */
+        
+        /*
+        var newwindow=window.open('/apex/enterAddress', 'enterAddress', 'height='+height+',width=470,scrollbars=no,top=0,toolbar=no,personalbar=no,location=no,directories=no,statusbar=no,menubar=no,status=no,left=60,screenX=200,top=100,screenY=200');
+        if (window.focus) {newwindow.focus()}
+        */
+    }
+    return false;
+}
+
+function emailRoute() {
+    if(document.getElementById('pageId:formId:routeLatLong2Id').value == '') {
+        alert('No route on map');
+        return false;
+    }
+    
+    showGreyOverlay(); 
+    
+    var queryString = '?ids=';
+    for(var i = 1; i <= 10; i++) {
+        if(document.getElementById('pageId:formId:locId' + i).value == '') {break;}
+        if(queryString != '?ids=') {queryString += ",";}
+        queryString += document.getElementById('pageId:formId:locId' + i).value;
+    }
+    
+    var routeId = document.getElementById('pageId:formId:routeId').value;
+    if(routeId != '') {
+        queryString += '&routeId=' + routeId;
+    }
+    document.getElementById('emailRoutePopup').style.display = '';
+    var height = '247px';
+    $('#emailRoutePopup').css('height', height);
+    document.getElementById('emailRoutePopup').innerHTML = '<iframe src="/apex/emailRoute' + queryString + '" style="border: 0;" width="100%" height="100%"></iframe>';
+    
+    centerPopupVertically('emailRoutePopup', height);
+    /*
+    var newwindow=window.open('/apex/emailRoute' + queryString, 'emailRoute', 'height=250,width=320,scrollbars=no,top=0,toolbar=no,personalbar=no,location=no,directories=no,statusbar=no,menubar=no,status=no,left=200,screenX=400,top=200,screenY=200');
+    if (window.focus) {newwindow.focus()}
+    */
+    
+    return false;
+}
+
+function showDrivingInstructions() {
+    if(document.getElementById('pageId:formId:routeLatLong2Id').value == '') {
+        alert('No route on map');
+        return false;
+    }
+    var ids = '';
+    for(var i = 1; i <= 10; i++) {
+        if(document.getElementById('pageId:formId:locId' + i).value == '') {break;}
+        if(ids != '') {ids += ",";}
+        ids += document.getElementById('pageId:formId:locId' + i).value;
+    }
+    var newwindow=window.open('/apex/drivingInstructions?ids=' + ids, 'drivingInstructions', 'height=600,width=550,scrollbars=yes,top=0,toolbar=no,personalbar=no,location=no,directories=no,statusbar=no,menubar=no,status=no,left=60,screenX=200,top=100,screenY=200');
+    if (window.focus) {newwindow.focus()}
+    return false;
+}
+
+function editFilter() {
+    if(document.getElementById('pageId:formId:filtersId').value == '') {
+        return false;
+    }
+    
+    showGreyOverlay(); 
+    document.getElementById('filtersPopup').style.display = '';
+    var height = 300; //open 3 rows
+    if(document.getElementById('pageId:formId:findAccountsCb').checked == true && 
+        document.getElementById('pageId:formId:findContactsCb').checked == true && 
+        document.getElementById('pageId:formId:findLeadsCb').checked == true) 
+    {
+        //open 6 rows
+        height = 590;
+    } else if((document.getElementById('pageId:formId:findAccountsCb').checked == true && document.getElementById('pageId:formId:findContactsCb').checked == true) ||
+              (document.getElementById('pageId:formId:findAccountsCb').checked == true && document.getElementById('pageId:formId:findLeadsCb').checked == true) ||
+              (document.getElementById('pageId:formId:findContactsCb').checked == true && document.getElementById('pageId:formId:findLeadsCb').checked == true))
+    {   
+        //open 9 rows
+        height = 444;
+    }
+    var clientName = document.getElementById('pageId:formId:clientName').value;
+    if(clientName == 'BBraun' && document.getElementById('pageId:formId:findAccountsCb').checked == true) {
+        height += 155;
+    }
+    
+    height = height.toString() + 'px';
+    document.getElementById('filtersPopup').style.height = height;
+    
+    var filterId = document.getElementById('pageId:formId:filterName').value;
+    if(filterId == '--Select Filter--') {
+        document.getElementById('filtersPopup').innerHTML = '<iframe src="/apex/setFilters" style="border: 0;" width="100%" height="100%"></iframe>';   
+    } else {
+        document.getElementById('filtersPopup').innerHTML = '<iframe src="/apex/setFilters?id=' + filterId + '" style="border: 0;" width="100%" height="100%"></iframe>';
+    }
+    
+    centerPopupVertically('filtersPopup', height);
+    
+    //if (window.focus) {newwindow.focus()}
+    return false;
+}
+
+function newFilter() {
+    showGreyOverlay(); 
+    document.getElementById('pageId:formId:filterName').value = '--Select Filter--';
+    document.getElementById('filtersNiceShownId').innerHTML = '<b></b>';
+    document.getElementById('pageId:formId:filtersNiceHiddenId').value = '<b></b>';
+    document.getElementById('pageId:formId:filtersId').value = '';
+    document.getElementById('filterEditRemoveButtons').style.display = 'none';
+    
+    /* open the modal window */
+    document.getElementById('filtersPopup').style.display = '';
+    var height = 300; //open 3 rows
+    
+    if(document.getElementById('pageId:formId:findAccountsCb').checked == true && 
+        document.getElementById('pageId:formId:findContactsCb').checked == true && 
+        document.getElementById('pageId:formId:findLeadsCb').checked == true) 
+    {
+        //open 6 rows
+        height = 590;
+    } else if((document.getElementById('pageId:formId:findAccountsCb').checked == true && document.getElementById('pageId:formId:findContactsCb').checked == true) ||
+              (document.getElementById('pageId:formId:findAccountsCb').checked == true && document.getElementById('pageId:formId:findLeadsCb').checked == true) ||
+              (document.getElementById('pageId:formId:findContactsCb').checked == true && document.getElementById('pageId:formId:findLeadsCb').checked == true))
+    {   
+        //open 9 rows
+        height = 444;
+    }
+    var clientName = document.getElementById('pageId:formId:clientName').value;
+    if(clientName == 'BBraun' && document.getElementById('pageId:formId:findAccountsCb').checked == true) {
+        height += 155;
+    }
+    
+    
+    height = height.toString() + 'px';
+    centerPopupVertically('filtersPopup', height);
+    
+    document.getElementById('filtersPopup').innerHTML = '<iframe src="/apex/setFilters" style="border: 0;" width="100%" height="100%"></iframe>';
+
+    /* open the modal window */
+    
+    /*
+    var newwindow=window.open('/apex/setFilters', 'filters', 'height=620,width=655,scrollbars=no,top=0,toolbar=no,personalbar=no,location=no,directories=no,statusbar=no,menubar=no,status=no,left=60,screenX=200,top=100,screenY=200');
+    if (window.focus) {newwindow.focus()}
+    */
+   
+    return false;
+}
+
+function checkParams(button) {
+    if(button.id == 'showAddress') {
+        if(document.getElementById('pageId:formId:mainStreet').value == '' ||
+            document.getElementById('pageId:formId:mainCity').value == '')
+        {
+            alert('Please enter at least street and city');
+            return false;
+        }
+        setMainAddress();
+    } else {
+        var distance = document.getElementById('pageId:formId:disstanceId').value;
+        deleteRoute();
+        document.getElementById('pageId:formId:routeName').value = 'Untitled';
+        document.getElementById('pageId:formId:routeId').value = '';
+        showOnMap();
+    }
+}
+
+function overDrop(event, ui) {
+    if(!firstDrop) {
+        /* detecting up or down */
+        var mul = 1;
+        var splitDropped = $(this).attr("id").split('_');
+        var splitDragged = $(ui.draggable).attr("id").split('_');
+        
+        if($(ui.draggable).position().top < $(this).position().top) {
+            //$('#testSpan').html($(this).attr("id") + ' down dropped ' + splitDropped[1] + ' dragged ' + splitDragged[1]);
+            placeToLocationNum[parseInt(splitDropped[1])-1] = placeToLocationNum[splitDropped[1]];
+            mul = -1;
+        } else {
+            //$('#testSpan').html($(this).attr("id") + ' up dropped ' + splitDropped[1] + ' dragged ' + splitDragged[1]);
+            placeToLocationNum[parseInt(splitDropped[1])+1] = placeToLocationNum[splitDropped[1]];
+        }
+        
+        var IdOfRelocatedDiv = 'routeDivDragged_' + placeToLocationNum[splitDropped[1]];
+        placeToLocationNum[splitDropped[1]] = splitDragged[1];
+        
+        /* moving droppable up or down */
+        var relocatedDivTop = $('#'+IdOfRelocatedDiv).position().top;
+        var topOffset = relocatedDivTop + (mul * 54);
+        $('#'+IdOfRelocatedDiv).css({
+            top: topOffset + "px"
+        });
+        
+        
+    } else {
+        firstDrop = false;
+    }
+    
+    topOfLastDroppable = $(this).position().top;
+}
+
+
+
+function hideGreyOverlay(popupId) {
+    $("#"+popupId).css("display", "none");
+    $("#greyPopup").css("display", "none");
+}
+
+function centerPopupVertically(popupId, height){
+    var heightNum = Math.floor(height.substring(0,3));
+    var heightOffset = $("#AppBodyHeader").height();
+    $("#"+popupId).css('height', height);
+    $("#"+popupId).css('top', ($(window).height()-heightNum)/2 - heightOffset);
+}
+
+function showGreyOverlay() {
+    var heightOffset;
+//    if(!IElessThan9()) {
+//        heightOffset = $("#AppBodyHeader").css('height');
+//        heightOffsetSplit = heightOffset.split('px');
+//        heightOffset = (parseInt(heightOffsetSplit[0]) + 3).toString()+'px';
+//    } else { 
+        heightOffset = $("#AppBodyHeader").height() + 3;
+//    }
+    var windowHeight = $('#contentWrapper').height();
+    var windowWidth = $(document).width();
+    var leftOffset = (-1)*($(document).width()-$('#contentWrapper').width())/2;
+    
+    $("#greyPopup").css({
+        display: "",
+        top: "-" + heightOffset,
+        left: leftOffset,
+        height: windowHeight,
+        width: windowWidth
+    });
+}
+
+function displayCurrentLocation() {
+    navigator.geolocation.getCurrentPosition(function(position){
+        if(!position.coords.latitude) {
+            alert('Could not detect current location');
+        } else {
+            Latitude = position.coords.latitude;
+            Longitude = position.coords.longitude;
+            var geocoder = new google.maps.Geocoder();
+            var latLng = new google.maps.LatLng(Latitude, Longitude);
+            if (geocoder) {
+                geocoder.geocode({ 'latLng': latLng}, function (results, status) {
+                    if (status == google.maps.GeocoderStatus.OK) {
+                        fullAddress = results[0].formatted_address;
+                        var arrAddress = results[0].address_components;
+                        var street = '', streetNum = '', zip = '', city = '', state = '', country = '';
+                        $.each(arrAddress, function (i, address_component) {
+                            if (address_component.types[0] == "route"){
+                                street = address_component.long_name; 
+                            }
+                            if (address_component.types[0] == "street_number"){
+                                streetNum = address_component.long_name; 
+                            }
+                            if (address_component.types[0] == "postal_code"){
+                                zip = address_component.long_name; 
+                            }
+                            if (address_component.types[0] == "locality"){
+                                city = address_component.long_name; 
+                            }
+                            if (address_component.types[0] == "administrative_area_level_1"){
+                                state = address_component.long_name; 
+                            }
+                            if (address_component.types[0] == "country"){
+                                country = address_component.long_name; 
+                            }
+                        });
+                        var streetNumStr = streetNum.toString();
+                        if(streetNumStr != '' && street != '') {street = street + ' ' + streetNumStr;}
+                        var url = '?street=' + street
+                        + '&city=' + city
+                        + '&zip=' + zip
+                        + '&state=' + state
+                        + '&country=' + country
+                        + '&name=Current Location'
+                        + '&lat=' + Latitude
+                        + '&lon=' + Longitude;
+                        window.location= 'FindNearby' + url;
+                    }
+                    else {
+                        alert('Could not detect current location');
+                    }
+                });
+            }
+            }           
+    });
+}
+
+
+var ownAddressOnRoute = false;     
+var recordId = '{!JSENCODE(recordId)}';
+function addToRoute(name, lat, lon, recordId) {
+    if(recordId == '1' || recordId == '2') {
+        ownAddressOnRoute = true;
+    }
+    var counter = 1;
+    while(counter < 11) {
+        if(document.getElementById('pageId:formId:routeLatLong' + counter + 'Id').value == '') {break;}
+        counter++;
+    }
+    if(counter <= 10) {
+        document.getElementById('pageId:formId:routeLatLong' + counter + 'Id').value = unescape(name) + '%%%%%RouteInfo%%%%%' + lat + '%%%%%RouteInfo%%%%%' + lon;
+        document.getElementById('pageId:formId:locId' + counter).value = recordId;
+    } else {
+        alert('No more than 10 points in route!');
+        return;
+    }
+    
+    setRouteNames();
+}
+
+var directionsDisplay;
+var isFromRoute = {!isFromRoute}
+var placeToLocationNum = {}; //order to route location num
+function setRouteNames() {
+    if(isFromRoute){
+        initialize();
+        isFromRoute = false;
+    }
+    placeToLocationNum = {};
+    if(document.getElementById('pageId:formId:routeLatLong1Id').value == '') {
+        //if(IElessThan9()) {document.getElementById('locationsDiv').innerHTML = 'Click on markers to add points to route';}
+        //else {
+        document.getElementById('locationsDiv').innerHTML = 'Click on markers to add points to route';
+        //}
+        directionsDisplay.setMap(null);
+    } else {
+        var counter = 1;
+        while(counter <= 10) {
+            var currId = document.getElementById('pageId:formId:locId' + counter).value;
+            if(currId == '1' || currId == '2') {
+                ownAddressOnRoute = true;
+            }   
+            if(document.getElementById('pageId:formId:routeLatLong' + counter + 'Id').value == '') {break;}
+            if(counter != 1) {
+            //if(IElessThan9()) {document.getElementById('routeDiv').innerHTML += '<br/>';}
+            }
+            else {
+                //if(IElessThan9()) {document.getElementById('routeDiv').innerHTML = '';}
+                //else {
+                document.getElementById('locationsDiv').innerHTML = '';
+                //}
+            }
+            latLng = document.getElementById('pageId:formId:routeLatLong' + counter + 'Id').value.split('%%%%%RouteInfo%%%%%');
+            //if(IElessThan9()) {
+                //document.getElementById('routeDiv').innerHTML += '<span class="redFont"><a id="removeLoc_' + counter + '" class="redFont fontBold" href="javascript:void(0)" onclick="deleteLocationFromRoute(this);">x</a>&nbsp;</span>' + counter + '. ' + latLng[0];
+            //} else {
+                /* drag and drop for route locs */
+                
+                var htmlStr = '<div class="routePointDroppable" id="routeDivDropped_' + counter + '"></div>';
+                htmlStr += '<div class="routePointDraggable" id="routeDivDragged_' + counter + '">';
+                var iconSrc;
+                var locationStr;
+                var locationName = latLng[0];
+                var paddingStr = '10';
+                if(locationName.length > 16) {paddingStr = '19';}
+                if(locationName.length > 18) {locationName = locationName.substring(0, 20) + '...';}
+                locationStr = '<a href="/' + currId + '" target="_blank" title="' + latLng[0] + '">' + locationName + '</a>';
+                if(currId == '1' || currId == '2') {
+                    iconSrc = '{!$Resource.googleIcon_green }';
+                    if(locationName.length < 16) {paddingStr = '5';}
+                    locationStr = '<span style="padding-top: ' + paddingStr + 'px" title="' + latLng[0] + '">' + locationName + '</span>';
+                }
+                else if(currId == '0') {
+                    iconSrc = '{!$Resource.googleIcon_red}';
+                    if(locationName.length < 15) {paddingStr = '5';}
+                    locationStr = '<span style="padding-top: ' + paddingStr + 'px" title="' + latLng[0] + '">' + locationName + '</span>';
+                }
+                else if(currId == recordId) {iconSrc = '{!$Resource.googleIcon_red}';}
+                else if(currId.substring(0, 3) == '001') {iconSrc = '{!$Resource.googleIcon_blue}';}
+                else if(currId.substring(0, 3) == '003') {iconSrc = '{!$Resource.googleIcon_purple}';}
+                else {iconSrc = '{!$Resource.googleIcon_orange}';}
+                htmlStr += '<table><tr><td rowspan="2" style="padding-top: 5px"><a id="divId444' + currId + '" href="javascript:void(0)" onclick="highlightMarker(this, \'' + currId + '\');"><img title="Find Me" src="' + iconSrc + '"/></a></td>';
+                htmlStr += '<td style="font-size: 13px; position:absolute; right: 5px;" align="right"><a id="removeLoc1_' + counter + '" href="javascript:void(0)" onclick="deleteLocationFromRoute(this);">x</a></td></tr>';
+                htmlStr += '<tr><td style="padding-top: ' + paddingStr + 'px">' + locationStr + '</td></tr></table>';
+                htmlStr += '</div>';
+                $("#locationsDiv").append(htmlStr);
+                var topOffset;
+                if({!isFromRoute}){
+                    topOffset = $('#routeDivDropped_' + counter).position().top + ((counter) * 54);// - 4*counter + 2;
+                    $('#routeDivDropped_' + counter).css({
+                        top: topOffset + "px"
+                    });
+                    topOffset = $('#routeDivDragged_' + counter).position().top + ((counter) * 54);// + (1-counter)*54 - 2;
+                    $('#routeDivDragged_' + counter).css({
+                        top: topOffset + "px"
+                    });
+                }else{
+                    topOffset = $('#routeDivDropped_' + counter).position().top + ((counter-1) * 54);// - 4*counter + 2;
+                    $('#routeDivDropped_' + counter).css({
+                        top: topOffset + "px"
+                    });
+                    topOffset = $('#routeDivDragged_' + counter).position().top + ((counter-1) * 54);// + (1-counter)*54 - 2;
+                    $('#routeDivDragged_' + counter).css({
+                        top: topOffset + "px"
+                    });
+                }
+                $('#routeDivDragged_' + counter).draggable({
+                    cursor: 'move',
+                    start: startDrag,
+                    stop: stopDrag
+                });
+                $('#routeDivDropped_' + counter).droppable({
+                    over: overDrop
+                });
+                placeToLocationNum[counter] = counter;
+                
+                /* end of drag and drop for route locs */
+            //}
+            
+            counter++;
+        }
+        
+        //if(!IElessThan9()) {
+            $('#locationsDiv').css('height', ((parseInt(counter)-1)*54).toString()+'px');
+            for(var i = 1; i < counter; i++) {
+                $("#routeDivDragged_" + i).draggable("option", "containment", "#locationsDiv");
+            }
+        //}
+        if(counter > 2) {
+            calcRoute();
+        }   
+        else {
+            directionsDisplay.setMap(null);
+        }
+    }
+}
+
+/* route drag&drop methods */
+var firstDrop;
+var topOfLastDroppable;
+function startDrag(event, ui) {
+    $(this).css("background-color", "#6690C1");
+    $(this).css("cursor", "move");
+    $('.routePointDraggable').css('z-index', '100');
+    $(this).css('z-index', '200');
+    firstDrop = true;
+}
+
+function stopDrag(event, ui) {
+    $(this).css("background-color", "#A5BFDD");
+    $(this).css({
+        top: topOfLastDroppable + "px"
+    });
+    
+    var values = new Array();
+    var counter = 0;
+    var routeLatLongArray = {}; //holds all routeLatLong*
+    var locIdArray = {}; //holds all locId*
+    
+    for (var k in placeToLocationNum) {
+        var locNum = placeToLocationNum[k];
+        values[counter] = locNum;
+        routeLatLongArray[locNum] = document.getElementById('pageId:formId:routeLatLong' + locNum + 'Id').value;
+        locIdArray[locNum] = document.getElementById('pageId:formId:locId' + locNum).value;
+        counter++;
+    }
+    
+    /* check if there was a problem with the drag&drop, if there was return to previous locations order */
+    values.sort();
+    var isProblem = false;
+    for (counter = 0; counter < values.length; counter++) {
+        if(counter > 0) {
+            if(parseInt(values[counter]) != parseInt(values[counter-1])+1) {
+                isProblem = true;
+                break;
+            } 
+        }
+    }
+    if(isProblem) {
+        setRouteNames();
+        return;
+    }
+    
+    for (var k in placeToLocationNum) {
+        var locNum = placeToLocationNum[k];
+        document.getElementById('pageId:formId:routeLatLong' + k + 'Id').value = routeLatLongArray[locNum];
+        document.getElementById('pageId:formId:locId' + k).value = locIdArray[locNum];
+    }
+    setRouteNames();
+}
+
+var totalLengthOfRoute = 0;
+/* start and end are fixed. Points on the way ARE NOT - Google returns shortest way, not in the given order */
+function calcRoute() {
+    var currLocation = document.getElementById('pageId:formId:routeLatLong1Id').value;
+    if(document.getElementById('pageId:formId:routeLatLong2Id').value == '' && document.getElementById('pageId:formId:routeLatLong3Id').value == '') {
+        alert('Please select at least 2 locations!');
+        return false;
+    }
+    
+    var pointNames = [];
+    directionsDisplay.setMap(map);
+    
+    var latLng = currLocation.split('%%%%%RouteInfo%%%%%');
+    pointNames.push(latLng[0]); //name of the point
+    
+    var start = new google.maps.LatLng(latLng[1], latLng[2]);
+    var end='';
+    var waypoints = [];
+    var request;
+    var counter = 2;
+    
+    while(counter <= 10) {
+        currLocation = document.getElementById('pageId:formId:routeLatLong' + counter + 'Id').value;
+        if(currLocation == '') {break;}        
+        latLng = currLocation.split('%%%%%RouteInfo%%%%%');
+        pointNames.push(latLng[0]); //name of the point
+        waypoints.push({
+            location: new google.maps.LatLng(latLng[1], latLng[2]),
+            stopover: true
+        });
+        end = new google.maps.LatLng(latLng[1], latLng[2]);       
+        counter++;    
+    }
+    
+    waypoints.pop();
+    var kmOrMiles = google.maps.UnitSystem.METRIC;  
+    if(!document.getElementById('pageId:formId:kmOrMileRadios:0').checked) {
+        kmOrMiles = google.maps.UnitSystem.IMPERIAL;    
+    }
+
+    request = {
+        origin: start,
+        destination: end,
+        waypoints: waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: kmOrMiles,
+        optimizeWaypoints: false
+    }; 
+    
+    totalLengthOfRoute = 0;
+    directionsService.route(request, function(response, status) {
+        if (status == google.maps.DirectionsStatus.OK) {
+            
+            directionsDisplay.setOptions({ preserveViewport: true }); //prevent changing the zoom when locations are added to the map
+            //directionsDisplay.setOptions({ suppressMarkers: true }); //suppress markers
+            //directionsDisplay.setOptions({ markerOptions: {zIndex: 5000} }); //show all markers on top
+            directionsDisplay.setDirections(response);
+            var route = response.routes[0];
+            var summaryPanel = document.getElementById("routePlan");
+            summaryPanel.value = "";
+            //For each route, display summary information.
+            for (var i = 0; i < route.legs.length; i++) {
+                if(route.legs.length > 1) {
+                    var routeSegment = i+1;
+                    summaryPanel.value += routeSegment + ". ";
+                }
+                totalLengthOfRoute += route.legs[i].distance.value;
+                summaryPanel.value += "<u>From <b>" + pointNames[i] + "</b> to <b>" + pointNames[i+1] + "</b> (" + route.legs[i].distance.text + ", " + route.legs[i].duration.text + ")</u>:<br/>";
+                summaryPanel.value += "<table>";
+                for (var j = 0; j < route.legs[i].steps.length; j++) {
+                    summaryPanel.value += "<tr><td width='400px'> " + route.legs[i].steps[j].instructions + "</td><td width='100px'>" + route.legs[i].steps[j].distance.text + "</td></tr>";
+                }
+                summaryPanel.value += "</table><br/>";
+            }
+        }
+    });
+    
+    return false;
+}
+
+function radioButtonChanged() {
+    document.getElementById('pageId:formId:filterName').value = '--Select Filter--';
+    document.getElementById('filtersNiceShownId').innerHTML = '<b></b>';
+    document.getElementById('pageId:formId:filtersNiceHiddenId').value = '<b></b>';
+    document.getElementById('pageId:formId:filtersId').value = '';
+    document.getElementById('pageId:formId:filterId').value = '';
+}
+
+
+var markerList = {};
+var formerRecordId = '';
+var formerIconFile = '';
+var formerTag = '';
+var z_index = 1000;
+var findNearByDetailsDivShown = {!findNearByDetailsDivShown};
+function highlightMarker(aTag, recordId) {
+    var yellowIndex = aTag.innerHTML.indexOf('googleIcon_yellow');
+    if(formerRecordId != '') {
+        markerList[formerRecordId].icon = formerIconFile;
+        markerList[formerRecordId].setAnimation(null);
+        formerTag.innerHTML = "<img title='Find Me' src='" + formerIconFile + "'/>";
+    }                         
+    if(yellowIndex == -1) {
+        formerTag = aTag;
+        formerRecordId = recordId;
+        formerIconFile = markerList[recordId].icon;
+        markerList[recordId].icon = '{!$Resource.googleIcon_yellow}';
+        aTag.innerHTML = '<img title="Remove Highlight" src="' + '{!$Resource.googleIcon_yellow}' + '"/>';
+        z_index++;
+        markerList[recordId].setZIndex(z_index);
+        map.setCenter(markerList[recordId].position);
+    }
+}    
+      var arraddress= new Array();      
+      var arrcontent=new Array();
+      var arrids= new Array();
+      var i=1;
+      var map;
+      var marker;    
+      var geocoder;
+      
+      function initialize() {
+      var myOptions = {
+        zoom: 12,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      }
+      //create map
+      map = new google.maps.Map(document.getElementById("mapDiv"), myOptions);
+      directionsDisplay = new google.maps.DirectionsRenderer();
+      }
+
+function geocodeAddress(addds,content,i,id)
+{
+var iconFile;
+if(i==0){
+    iconFile = '{!$Resource.googleIcon_red}';  
+}else{
+    //iconFile = '{!$Resource.googleIcon_blue }';
+    var id1 = eval('id');
+    if(id1.substring(0,3)=="001") {iconFile = '{!$Resource.googleIcon_blue}';}
+    if(id1.substring(0,3)=="003") {iconFile = '{!$Resource.googleIcon_purple}';}
+    if(id1.substring(0,3)=="00Q") {iconFile = '{!$Resource.googleIcon_orange}';}
+    
+}
+geocoder = new google.maps.Geocoder();
+geocoder.geocode( { address: addds}, function(results, status) {
+        if (status == google.maps.GeocoderStatus.OK && results.length) {
+          if (status != google.maps.GeocoderStatus.ZERO_RESULTS) {
+
+            //center map
+            map.setCenter(results[0].geometry.location);
+    
+            //create marker
+            marker = new google.maps.Marker({
+                position: results[0].geometry.location,
+                map: map,
+                icon: iconFile
+            });
+            
+            markerList[id] = marker;
+                    
+            var infowindow = new google.maps.InfoWindow({
+                content: content
+            });
+    
+            //add listeners
+            google.maps.event.addListener(marker, 'click', function() {
+              infowindow.open(map,this);
+            });
+            google.maps.event.addListener(infowindow, 'closeclick', function() {
+              map.setCenter(marker.getPosition()); 
+            });
+    
+          }
+    
+        } else {
+          //$('#mapDiv').css({'height' : '100px'});
+          resizeIframe();
+        }
+        });
+        
+        
+        
+}
+ //google.maps.event.addDomListener(window, 'load', initialize);   
+var routeDivShown = {!isFindTrue};    
+    $(document).ready(function() {
+      if(!{!isFromRoute}){
+          initialize();
+      }
+      if(routeDivShown) {
+            
+            document.getElementById('SearchParametersBlock').style.display = '';
+            document.getElementById('recordsTable').style.display = '';
+            $('#recordsTable').css('position', 'relative');
+            $('#recordsTable').css('bottom', '595px');
+            var curWidth = $('#mapDiv').width();
+            curWidth = parseInt(curWidth) - 200;
+            $('#mapDiv').css('width', curWidth);
+            document.getElementById('routeDiv1').style.display = '';
+            $('#routeDiv1').css('position', 'relative');
+            $('#routeDiv1').css('bottom', '609px');
+            $('#mapDiv').css('z-index', 10);
+            $('#routeDiv1').css('z-index', 10);
+            document.getElementById('routeNameSpan1').innerHTML = document.getElementById('pageId:formId:routeName').value;
+   /*         if(document.getElementById('pageId:formId:filtersId').value != '') {
+                document.getElementById('filtersSpan').innerHTML = document.getElementById('pageId:formId:filtersNiceHiddenId').value;
+            } else {
+                document.getElementById('filtersSpan').innerHTML = '<b></b>';
+            }
+     */   } else {
+            document.getElementById('panelsInFirstScreen').style.display = '';
+        }
+      var address = "{!mainAddressTable[0].street}, " + "{!mainAddressTable[0].city}, " + "{!mainAddressTable[0].postalCode}, " + "{!mainAddressTable[0].Country}";
+      arraddress[0] = address;
+      arrcontent[0] = '<b>{!mainAddressTable[0].name}</b><br>{!mainAddressTable[0].street}<br>{!mainAddressTable[0].city}, {!mainAddressTable[0].postalCode}<br>{!mainAddressTable[0].Country}';
+      arrids[0] = '{!mainAddressTable[0].id}';
+      for (var i = 0; i < arraddress.length; i++) {
+          var latlng =geocodeAddress(arraddress[i],arrcontent[i],i,arrids[i]);
+      }            
+      
+      var addresses = document.getElementById('pageId:formId:addressesId').value;
+      if(addresses != 'OnlyOneAddress') {
+        var addressesArray = addresses.split('%');
+        for(i = 0; i < addressesArray.length; i++) {
+            addLocation(addressesArray[i]);
+        }
+    }
+      
+      function resizeIframe() {
+        var me = window.name;
+        if (me) {
+          var iframes = parent.document.getElementsByName(me);
+          if (iframes && iframes.length == 1) {
+            height = document.body.offsetHeight;
+            iframes[0].style.height = height + "px";
+          }
+        }
+      }
+    
+    });
+    
+    function addLocation(newAddress) {
+    var marker;
+    
+    //alert(newAddress);
+    
+    var addressesArray = newAddress.split('|');
+    var recordType = addressesArray[0];
+    var recordId = addressesArray[1];
+    var name = addressesArray[2];
+    var street = addressesArray[3];
+    var city = addressesArray[4];
+    var zip = addressesArray[5];
+    var state = addressesArray[6];
+    var country = addressesArray[7];
+    var lat = addressesArray[8];
+    var lng = addressesArray[9];
+    var IWExtraInfo = '';
+    if(addressesArray.length == 11) {
+        IWExtraInfo = addressesArray[10];
+    }
+    
+    var showRouteStr = '';
+    var addressStringFull = '';
+    if(recordId != '1' && recordId != '2') {
+        var textClass = '';
+        if(recordType == 'A') {textClass = 'AccountColor';}
+        if(recordType == 'C') {textClass = 'ContactColor';}
+        if(recordType == 'L') {textClass = 'LeadColor';}
+        if(routeDivShown) {
+            showRouteStr = "<a href='javascript:void(0)' onclick='addToRoute(\""+escape(name)+"\","+lat+","+lng+",\"" + recordId + "\");'><img title='Add To Route' src='{!$Resource.Location_Icon}'/></a>";
+        }    
+        
+        //not using returnAddressString because of XSS
+        addressStringFull = street;
+        if(zip != '' && zip != ' ') {addressStringFull += '&#x0A;' + zip;}
+        if(city != '' && city != ' ') {addressStringFull += '&#x0A;' + city;}
+        if(state != '' && state != ' ') {addressStringFull += '&#x0A;' + state;}
+        if(country != '' && country != ' ') {addressStringFull += '&#x0A;' + country;}
+        addressStringOnlyStreetCity = street + ', ' + city;
+        //addressStringFull = returnAddressString(street, zip, city, state, country);
+        
+        var content = "<div class='fontNormal'><b><a href='/" + recordId + "' target='_blank' class='" + textClass + "'>" + name + "</a></b><br/>";
+        content += "<div style='position: relative; left: -3px'><table><tr><td style='padding-top: 5px;'><span title='" + addressStringFull + "'>" + addressStringOnlyStreetCity + "</span></td><td style='padding-left: 15px;'>" + showRouteStr + "</td></tr></table></div>";
+        if(IWExtraInfo != '') {
+            IWExtraInfoArray = IWExtraInfo.split('IWExtraInfoABCIWExtraIfo');
+            for(var i= 0; i < IWExtraInfoArray.length; i++) {
+                content += '<br/>' + IWExtraInfoArray[i];
+            }
+        }
+        content += "</div>"
+    } 
+    if(recordId == '1') {
+        //own address (user entered, with seperate street, city..)
+        
+        //not using returnAddressString because of XSS
+        var addressString = street;
+        if(zip != '' && zip != ' ') {addressString += '<br/>' + zip;}
+        if(city != '' && city != ' ') {addressString += '<br/>' + city;}
+        if(state != '' && state != ' ') {addressString += '<br/>' + state;}
+        if(country != '' && country != ' ') {addressString += '<br/>' + country;}
+        //addressString = returnAddressString(street, zip, city, state, country);
+        
+        var content = "<table style='font-weight: normal;'><tr><td><b>" + name + "</b><br>" + addressString + "</td><td style='padding-left: 15px'><a href='javascript:void(0)' onclick='addToRoute(\""+escape(name)+"\","+lat+","+lng+",\"" + recordId + "\");'><img title='Add To Route' src='{!$Resource.pathOnMap}'/></a></td></tr><tr><td>[<a href='javascript:void(0)' onclick='removeMarker();'>remove</a>]</td></tr></table>";
+    }
+    if(recordId == '2') {
+        //own address (detected using geolocation, without seperate street, city..)
+        //street has the full address - got it from google in right format, comma separated. it is also possible to get the components (street, city..9 separately, but the street num comes seperately from the name, so I cannot know how to format the street
+        var fullAddress = street;
+        fullAddressOfOwnAddress = fullAddress;
+        if(fullAddress.indexOf(', ') != -1) {
+            fullAddressSplit = fullAddress.split(', ');
+            fullAddress = '';
+            for(var i = 0; i < fullAddressSplit.length; i++) {
+                fullAddress += fullAddressSplit[i];
+                if(i != fullAddressSplit.length-1) {fullAddress += "<br>";}
+            }
+        }
+        var content = "<table style='font-weight: normal;'><tr><td><b>" + name + "</b><br>" + fullAddress + "</td><td style='padding-left: 15px'><a href='javascript:void(0)' onclick='addToRoute(\""+escape(name)+"\","+lat+","+lng+",\"" + recordId + "\");'><img title='Add To Route' src='{!$Resource.pathOnMap}'/></a></td></tr><tr><td>[<a href='javascript:void(0)' onclick='removeMarker();'>remove</a>]</td></tr></table>";
+    }
+    var infowindow = new google.maps.InfoWindow({
+        content: content
+    });   
+    //newAddress = street + "," + city + "," + zip + "," + country;
+    
+    var iconFile;
+    //if(recordType == 'M') {iconFile = '';}
+    if(recordType == 'N') {
+        //own address
+        iconFile = '{!$Resource.googleIcon_green}'; 
+        document.getElementById('pageId:formId:OwnAddressUsed').value = 'true';
+        document.getElementById('pageId:formId:OwnAddressName').value = name;
+        document.getElementById('pageId:formId:OwnAddressStreet').value = street;
+        document.getElementById('pageId:formId:OwnAddressCity').value = city;
+        document.getElementById('pageId:formId:OwnAddressZip').value = zip;
+        document.getElementById('pageId:formId:OwnAddressState').value = state;
+        document.getElementById('pageId:formId:OwnAddressCountry').value = country;
+        document.getElementById('pageId:formId:OwnAddressLatitude').value = lat;
+        document.getElementById('pageId:formId:OwnAddressLongitude').value = lng;
+        
+        //maybe new bounds should be set:
+        if(minLatitude == '0') {
+            minLatitude = map.getBounds().getSouthWest().lat();
+            minLongitude = map.getBounds().getSouthWest().lng();
+            maxLatitude = map.getBounds().getNorthEast().lat();
+            maxLongitude = map.getBounds().getNorthEast().lng();
+        }
+        var updateBoundries = false;
+        if(lat < minLatitude) {minLatitude = lat; updateBoundries = true;}
+        if(lat > maxLatitude) {maxLatitude = lat; updateBoundries = true;}
+        if(lng < minLongitude) {minLongitude = lng; updateBoundries = true;}
+        if(lng > maxLongitude) {maxLongitude = lng; updateBoundries = true;}
+        if(updateBoundries) {
+            var southWest = new google.maps.LatLng(minLatitude, minLongitude);
+            var northEast = new google.maps.LatLng(maxLatitude, maxLongitude);
+            var bounds = new google.maps.LatLngBounds(southWest,northEast);
+            map.fitBounds(bounds);
+        }
+        
+    }
+    if(recordType == 'A') {iconFile = '{!$Resource.googleIcon_blue}';}
+    if(recordType == 'C') {iconFile = '{!$Resource.googleIcon_purple}';}
+    if(recordType == 'L') {iconFile = '{!$Resource.googleIcon_orange}';}
+    
+    var point = new google.maps.LatLng(lat,lng);
+    var marker = new google.maps.Marker({
+         position: point,
+         map: map,
+         title: name,
+         icon: iconFile
+     });
+     
+     markerList[recordId] = marker;
+     
+     if(recordType == 'N') {
+        markersThatCanBeRemoved.push(marker);
+     }
+     
+     //add listeners
+     google.maps.event.addListener(marker, 'click', function() {
+        if( prev_infowindow ) {
+            prev_infowindow.close();
+        }
+        prev_infowindow = infowindow;
+        infowindow.open(map,marker);
+     });
+}
+    </script>
+    
+    </head>
+    <body>
+    <apex:pageMessages />
+    <div id="ourMainDiv" style="font-weight: normal;">
+    <apex:outputLink rendered="{!IF(isFindTrue==True,False,True)}" value="/{!mainAddressTable[0].Id}" style="color: blue;">Back To {!mainAddressTable[0].Name}</apex:outputLink>
+    <div id="MyMainDiv">
+    <apex:form id="formId" styleClass="fontBold">
+    
+        <apex:inputHidden value="{!filters}" id="filtersId"/>
+        <apex:inputHidden value="{!filtersNice}" id="filtersNiceHiddenId"/>
+        <apex:inputHidden value="{!filterId}" id="filterId"/>
+        
+        <apex:inputHidden value="{!routeId}" id="routeId"/>
+        <apex:inputHidden value="{!recordIds}" id="recordIds"/>
+        <apex:inputHidden value="{!routeName}" id="routeName"/>
+        <apex:inputHidden value="{!recordId}" id="mainAddressRecordId"/>
+        <apex:inputHidden value="{!distance}" id="distance"/>
+        <apex:inputHidden value="{!clientName}" id="clientName"/>
+    
+        <apex:inputHidden value="{!routeLatLong1}" id="routeLatLong1Id"/>
+        <apex:inputHidden value="{!routeLatLong2}" id="routeLatLong2Id"/>
+        <apex:inputHidden value="{!routeLatLong3}" id="routeLatLong3Id"/>   
+        <apex:inputHidden value="{!routeLatLong4}" id="routeLatLong4Id"/>   
+        <apex:inputHidden value="{!routeLatLong5}" id="routeLatLong5Id"/>   
+        <apex:inputHidden value="{!routeLatLong6}" id="routeLatLong6Id"/>   
+        <apex:inputHidden value="{!routeLatLong7}" id="routeLatLong7Id"/>   
+        <apex:inputHidden value="{!routeLatLong8}" id="routeLatLong8Id"/>   
+        <apex:inputHidden value="{!routeLatLong9}" id="routeLatLong9Id"/>   
+        <apex:inputHidden value="{!routeLatLong10}" id="routeLatLong10Id"/>
+        <apex:inputHidden value="{!locId1}" id="locId1"/>
+        <apex:inputHidden value="{!locId2}" id="locId2"/>
+        <apex:inputHidden value="{!locId3}" id="locId3"/>   
+        <apex:inputHidden value="{!locId4}" id="locId4"/>   
+        <apex:inputHidden value="{!locId5}" id="locId5"/>   
+        <apex:inputHidden value="{!locId6}" id="locId6"/>   
+        <apex:inputHidden value="{!locId7}" id="locId7"/>   
+        <apex:inputHidden value="{!locId8}" id="locId8"/>   
+        <apex:inputHidden value="{!locId9}" id="locId9"/>   
+        <apex:inputHidden value="{!locId10}" id="locId10"/>
+        
+        <apex:inputHidden value="{!MainAddressStreet}" id="MainAddressStreet"/>
+        <apex:inputHidden value="{!MainAddressCity}" id="MainAddressCity"/>
+        <apex:inputHidden value="{!MainAddressZip}" id="MainAddressZip"/>
+        <apex:inputHidden value="{!MainAddressCountry}" id="MainAddressCountry"/>
+        <apex:inputHidden value="{!MainAddressState}" id="MainAddressState"/>
+        
+        <apex:inputHidden value="{!OwnAddressName}" id="OwnAddressName"/>
+        <apex:inputHidden value="{!OwnAddressStreet}" id="OwnAddressStreet"/>
+        <apex:inputHidden value="{!OwnAddressCity}" id="OwnAddressCity"/>
+        <apex:inputHidden value="{!OwnAddressZip}" id="OwnAddressZip"/>
+        <apex:inputHidden value="{!OwnAddressCountry}" id="OwnAddressCountry"/>
+        <apex:inputHidden value="{!OwnAddressState}" id="OwnAddressState"/>
+        <apex:inputHidden value="{!OwnAddressLatitude}" id="OwnAddressLatitude"/>
+        <apex:inputHidden value="{!OwnAddressLongitude}" id="OwnAddressLongitude"/>
+        <apex:inputHidden value="{!OwnAddressUsed}" id="OwnAddressUsed"/>
+                
+        <apex:inputHidden value="{!Latitude}" id="latitudeId"/>
+        <apex:inputHidden value="{!Longitude}" id="longitudeId"/>
+        
+        <apex:inputHidden value="{!addresses}" id="addressesId"/>
+        
+        <input type="hidden" id="routePlan"/>
+        
+        
+        
+        <apex:actionFunction action="{!updateLongLat}" name="updateLongLat" rerender="dummyDiv22"></apex:actionFunction>
+             
+        <div id="greyPopup" style="display: none; "></div>  
+        
+     <!--   <apex:outputPanel id="op" rendered="{!IF(isFindTrue==True,False,True)}">  -->
+     
+        <div id="panelsInFirstScreen" style="margin-bottom: 15px;">
+            <table > 
+                <tr>
+                    <td style="{!if(!isFindTrue, '', 'display: none')}">
+                        <div id="findNearByDiv" >
+                            <fieldset style="background-color: #F8F8F8; padding: 10px; border: solid 2px; border-color: #029ACC;">
+			                    <legend>&nbsp;Search Objects&nbsp;</legend>
+			                    <table>
+			                        <tr>
+			                            <td>
+			                                <table>
+			                                    <tr>
+			                                        <td style="padding-top: 8px"><apex:inputCheckbox value="{!isAccount}" id="findAccountsCb"/></td><td><img src="{!$Resource.AccountIcon}"/></td><td style="padding-top: 8px"><b>Accounts</b></td><td style="padding-top: 8px">&nbsp;&nbsp;&nbsp;</td>
+			                                        <td style="padding-top: 8px;"><apex:inputCheckbox value="{!isContact}" id="findContactsCb"/></td><td><img src="{!$Resource.ContactIcon}"/></td><td style="padding-top: 8px"><b>Contacts</b></td><td style="padding-top: 8px">&nbsp;&nbsp;&nbsp;</td>
+			                                        <td style="padding-top: 8px;"><apex:inputCheckbox value="{!isLead}" id="findLeadsCb"/></td><td><img src="{!$Resource.LeadIcon}"/></td><td style="padding-top: 8px"><b>Leads</b></td><td style="padding-top: 8px">&nbsp;&nbsp;&nbsp;</td>
+			                                    </tr>
+			                                </table>
+			                            </td>
+			                            <td style="padding-left: 10px;">
+			                                <table>
+			                                    <tr>
+			                                        <td><img src="/img/icon/custom51_100/globe32.png"/></td><td style="padding-left: 5px; padding-top: 10px;"><b>Distance</b></td>
+			                                        <td style="padding-left: 5px; padding-top: 10px;"><apex:inputText maxlength="{!distanceNumDigits}" value="{!distance}" id="disstanceId" style="width: 30px;"/></td>
+			                                        <td> 
+			                                            <div>
+			                                                <apex:selectRadio value="{!kmOrMileValue}" layout="pageDirection" id="kmOrMileRadios">
+			                                                    <apex:selectOptions value="{!kmOrMile}"/>
+			                                                </apex:selectRadio>
+			                                            </div>
+			                                        </td>
+			                                    </tr>
+			                                </table>
+			                            </td>
+			                        </tr>
+			                    </table>
+			                </fieldset>
+                        </div>
+                    </td>
+                    <td style="{!if(!isFindTrue, '', 'display: none')}; position:relative; padding-left: 10px;">
+			    		<fieldset style="background-color: #F8F8F8; padding: 10px; border: solid 2px; border-color: #029ACC;">
+							<legend>&nbsp;Filters&nbsp;</legend>
+							<table>
+								<tr>
+									<td style="padding-top: 8px"><b>Account Type</b></td><td><apex:inputField value="{!acct.Type}" label="Account Type" id="accType"/></td>
+								</tr><tr><td style="padding-top: 8px"><b>Lead Status</b></td><td><apex:inputField value="{!leadFtr.Status}" label="Lead Status" required="false" id="leadStatus"/></td>
+								</tr>
+							</table>
+						</fieldset>
+			    	</td>
+                    <td style="{!if(!isFindTrue, '', 'display: none')}; position:relative; top: 30px; padding-left: 30px;">
+                        <div id="findButton">
+                            <apex:commandButton value="Search" action="{!findNearBy}" style="font-weight: bold; font-size: 15px; font-family: 'Arial'; color: #0000CD; height: 30px;"/>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+    
+        </div>
+ <!--       </apex:outputPanel>  -->
+        <div id="SearchParametersBlock" style="display: none">
+        <apex:pageBlock rendered="{!IF(isFindTrue==True,True,False)}">
+            <apex:pageBlockButtons location="top">
+                <apex:commandButton value="New Search" action="{!newSearch}"/>
+                <!-- <apex:commandButton value="Add Point To Map"/> -->
+            </apex:pageBlockButtons>
+            <apex:pageBlockSection title="Search Objects" columns="2" collapsible="false">
+                <apex:outputText label="Distance" value="{!distance} {!kmOrMileValue}"></apex:outputText>
+                <apex:outputText label="Search For" value="{!recordsSearched}"></apex:outputText>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+        </div>
+            
+      <apex:repeat value="{!accounts}" var="a">
+          <script>
+              arraddress[i]='{!a.BillingStreet}, ' + '{!a.BillingCity}, ' + '{!a.BillingPostalCode}, ' + '{!a.BillingCountry}';              
+              arrids[i]='{!a.id}';
+              arrcontent[i]='<b>{!a.Name}</b><br>{!a.BillingStreet}<br>{!a.BillingCity}, {!a.BillingPostalCode}<br>{!a.BillingCountry}';
+              i++;
+          </script>
+      </apex:repeat>
+      <apex:repeat value="{!contacts}" var="a">
+          <script>
+              arraddress[i]='{!a.MailingStreet}, ' + '{!a.MailingCity}, ' + '{!a.MailingPostalCode}, ' + '{!a.MailingCountry}';              
+              arrids[i]='{!a.id}';
+              arrcontent[i]='<b>{!a.Name}</b><br>{!a.MailingStreet}<br>{!a.MailingCity}, {!a.MailingPostalCode}<br>{!a.MailingCountry}';
+              i++;
+          </script>
+      </apex:repeat>
+      <apex:repeat value="{!leads}" var="a">
+          <script>
+              arraddress[i]='{!a.Street}, ' + '{!a.City}, ' + '{!a.PostalCode}, ' + '{!a.Country}';              
+              arrids[i]='{!a.id}';
+              arrcontent[i]='<b>{!a.Name}</b><br>{!a.Street}<br>{!a.City}, {!a.PostalCode}<br>{!a.Country}';
+              i++;
+          </script>
+      </apex:repeat>
+      <div id="mapDiv" style="border: solid 2px; border-color: #029ACC;"></div>
+      
+<!--      <apex:outputPanel rendered="{!IF(findNearByDetailsDivShown, True, False)}">  -->
+          <div id="routeDiv1" style="display: none;">
+             <fieldset id="routeDiv1FieldSet">
+            <legend>&nbsp;Route [<span id="routeNameSpan1"></span>]&nbsp; Info</legend>
+            
+            <table width="166px">
+            <tr>
+            <td class="textCenter"><input type="image" src="{!$Resource.Save_Icon}" onclick="return saveRoute();" title="Save Route Details" width="25px" height="30px"/></td>
+            <td class="textCenter"><input type="image" src="/img/icon/car32.png" onclick="return showDrivingInstructions();" title="Print Driving Instructions"/></td>
+            <td class="textCenter"><input type="image" src="/img/icon/mail32.png" onclick="return emailRoute();" title="Email Driving Instructions"/></td>
+            <td class="textCenter"><input type="image" src="{!$Resource.Remove_Icon}" onclick="return deleteRoute();" title="Remove All From Route" width="25px" height="30px"/></td>
+            </tr>
+            </table>
+            
+            <div id="locationsDiv" style="width: 166px; height: 20px; margin-top: 15px;">
+            </div>
+            
+              </fieldset>
+          </div>
+  <!--    </apex:outputPanel>  -->
+            
+            
+            <div id="routeDiv" style="display: none;"></div>
+<div style="display: none; font-weight: normal;" id="recordsTable">
+            <apex:pageBlock title="Main Address" rendered="{!isFindTrue}"> 
+                <apex:pageBlockTable value="{!mainAddressTable}" var="rec">
+                    <apex:column style="width: 5%; text-align: center;" headerValue="Add To Route">
+                        <a href="javascript:void(0)" onclick="addToRoute('{!JSINHTMLENCODE(rec.name)}',{!rec.latitude},{!rec.longitude},'{!rec.id}');"><img title='Click here to add this to the route' src='/img/icon/custom51_100/redcross32.png'/></a>
+                    </apex:column>
+                    <apex:column style="width: 4%; text-align: center;" headerValue="Find Me">
+                        <a href="javascript:void(0)" onclick="highlightMarker(this, '{!rec.id}');"><img title='Find Me' src='{!$Resource.googleIcon_red}'/></a>
+                    </apex:column>
+                    <apex:column style="width: 20%" headerValue="Name">
+                        <apex:outputLink value="/{!rec.id}" target="_blank" rendered="{!IF(rec.id=='0', false, true)}">{!rec.name}</apex:outputLink>
+                        <apex:outputText value="{!rec.name}" rendered="{!IF(rec.id=='0', true, false)}"/>   
+                    </apex:column>  
+                    <apex:column headerValue="Address" style="width: 62%">
+                        {!rec.street}, {!rec.postalCode} {!rec.city}, {!rec.state}, {!rec.Country}
+                    </apex:column>    
+                </apex:pageBlockTable>
+            </apex:pageBlock>
+    
+    <apex:pageBlock title="Accounts Within {!distance} {!kmOrMileValue}" rendered="{!foundAccounts}">
+            <apex:pageBlockTable value="{!accountTable}" var="rec">
+                <apex:column value="{!rec.serialNumber}" style="width: 2%"/>
+                <apex:column style="width: 5%; text-align: center;" headerValue="Add To Route">
+                    <a href="javascript:void(0)" onclick="addToRoute('{!JSINHTMLENCODE(rec.name)}',{!rec.latitude},{!rec.longitude},'{!rec.id}');"><img title='Click here to add this to the route' src='/img/icon/custom51_100/redcross32.png'/></a>
+                </apex:column>
+                <apex:column style="width: 4%; text-align: center;" headerValue="Find Me">
+                    <a href="javascript:void(0)" onclick="highlightMarker(this, '{!rec.id}');"><img title='Find Me' src='{!$Resource.googleIcon_blue }'/></a>
+                </apex:column>
+                <apex:column headerValue="Account Name" style="width: 20%">
+                    <a href="/{!rec.id}" target="_blank" title="{!rec.name}">{!rec.name}</a>    
+                </apex:column>  
+                <apex:column headerValue="Account Address" style="width: 62%">
+                    {!rec.street}, {!rec.postalCode} {!rec.city}, {!rec.state}, {!rec.Country}
+                </apex:column>    
+                <apex:column headerValue="Distance ({!kmOrMileValue})" style="width: 10%">
+                    {!rec.distance}
+                </apex:column>
+        </apex:pageBlockTable>
+    </apex:pageBlock>
+    
+    <apex:pageBlock title="Contacts Within {!distance} {!kmOrMileValue}" rendered="{!foundContacts}">
+            <apex:pageBlockTable value="{!contactTable}" var="rec">
+                <apex:column value="{!rec.serialNumber}" style="width: 2%"/>
+                <apex:column style="width: 5%; text-align: center;" headerValue="Add To Route">
+                    <a href="javascript:void(0)" onclick="addToRoute('{!JSINHTMLENCODE(rec.name)}',{!rec.latitude},{!rec.longitude},'{!rec.id}');"><img title='Click here to add this to the route' src='/img/icon/custom51_100/redcross32.png'/></a>
+                </apex:column>
+                <apex:column style="width: 4%; text-align: center;" headerValue="Find Me">
+                    <a href="javascript:void(0)" onclick="highlightMarker(this, '{!rec.id}');"><img title='Find Me' src='{!$Resource.googleIcon_purple}'/></a>
+                </apex:column>
+                <apex:column headerValue="Contact Name" style="width: 20%">
+                    <a href="/{!rec.id}" target="_blank" title="{!rec.name}">{!rec.name}</a>
+                </apex:column>  
+                <apex:column headerValue="Contact Address" style="width: 62%">
+                    {!rec.street}, {!rec.postalCode} {!rec.city}, {!rec.state}, {!rec.Country}
+                </apex:column>    
+                <apex:column headerValue="Distance ({!kmOrMileValue})" style="width: 10%">
+                    {!rec.distance}
+                </apex:column>
+        </apex:pageBlockTable>
+    </apex:pageBlock>
+    
+    <apex:pageBlock title="Leads Within {!distance} {!kmOrMileValue}" rendered="{!foundLeads}">
+            <apex:pageBlockTable value="{!leadTable}" var="rec">
+                <apex:column value="{!rec.serialNumber}" style="width: 2%"/>
+                <apex:column style="width: 5%; text-align: center;" headerValue="Add To Route">
+                    <a href="javascript:void(0)" onclick="addToRoute('{!JSINHTMLENCODE(rec.name)}',{!rec.latitude},{!rec.longitude},'{!rec.id}');"><img title='Click here to add this to the route' src='/img/icon/custom51_100/redcross32.png'/></a>
+                </apex:column>
+                <apex:column style="width: 4%; text-align: center;" headerValue="Find Me">
+                    <a href="javascript:void(0)" onclick="highlightMarker(this, '{!rec.id}');"><img title='Find Me' src='{!$Resource.googleIcon_orange}'/></a>
+                </apex:column>
+                <apex:column headerValue="Lead Name" style="width: 20%">
+                    <a href="/{!rec.id}" target="_blank" title="{!rec.name}">{!rec.name}</a>    
+                </apex:column>  
+                <apex:column headerValue="Lead Address" style="width: 62%">
+                    {!rec.street}, {!rec.postalCode} {!rec.city}, {!rec.state}, {!rec.Country}
+                </apex:column>    
+                <apex:column headerValue="Distance ({!kmOrMileValue})" style="width: 10%">
+                    {!rec.distance}
+                </apex:column>
+        </apex:pageBlockTable>
+    </apex:pageBlock>
+</div>    
+
+      <apex:repeat value="{!routeDisplayList}" var="a">
+          <script type="text/javascript">
+              addToRoute('{!a.name}','{!a.latitude}','{!a.longitude}','{!a.id}');
+          </script>
+      </apex:repeat>
+      
+    </apex:form>
+    <apex:outputpanel id="dummyDiv22"></apex:outputpanel>
+    </div>
+            <div id="filtersPopup" style="display: none; "></div>
+        <div id="enterAddressPopup" style="display: none; "></div>
+        <div id="saveRoutePopup" style="display: none; "></div>
+        <div id="emailRoutePopup" style="display: none; "></div>
+    </div>
+    </body>
+</apex:page>

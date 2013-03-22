@@ -1,0 +1,2 @@
+<apex:page standardController="Route__c" extensions="showRouteOnMapCont" action="{!redirect}">
+</apex:page>
